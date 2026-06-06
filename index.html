@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>CineStream — Movie Player</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface-2: #1a1a26;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f4f4f8;
+      --muted: #8b8b9e;
+      --accent: #e50914;
+      --accent-hover: #ff1a26;
+      --accent-glow: rgba(229, 9, 20, 0.35);
+      --success: #22c55e;
+      --radius: 14px;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(229, 9, 20, 0.18), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(99, 102, 241, 0.08), transparent);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.35rem;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), #b20710);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 1rem;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .search-wrap {
+      flex: 1;
+      min-width: 260px;
+      position: relative;
+    }
+
+    .search-form {
+      display: flex;
+      gap: 10px;
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-input::placeholder {
+      color: var(--muted);
+    }
+
+    .search-input:focus {
+      border-color: rgba(229, 9, 20, 0.5);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .btn {
+      border: none;
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: transform 0.15s, background 0.2s, box-shadow 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      padding: 14px 22px;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-play {
+      background: rgba(229, 9, 20, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(229, 9, 20, 0.35);
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .btn-play:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-icon {
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      padding: 6px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .btn-icon:hover {
+      color: var(--accent);
+      background: rgba(229, 9, 20, 0.1);
+    }
+
+    /* Layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 960px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Player */
+    .player-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 4px);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .player-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .player-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .now-playing {
+      min-width: 0;
+    }
+
+    .now-playing-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .now-playing-title {
+      font-weight: 600;
+      font-size: 1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .imdb-badge {
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: var(--surface-2);
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .player-frame-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+    }
+
+    .player-frame-wrap iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #000;
+      pointer-events: none;
+    }
+
+    .player-frame-wrap.interaction-on iframe {
+      pointer-events: auto;
+    }
+
+    .player-guard {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.35);
+      text-align: center;
+      padding: 20px;
+    }
+
+    .player-guard.visible {
+      display: flex;
+    }
+
+    .player-frame-wrap.interaction-on .player-guard {
+      display: none;
+    }
+
+    .player-guard-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      max-width: 260px;
+    }
+
+    .btn-fullscreen {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .btn-fullscreen:hover {
+      border-color: rgba(229, 9, 20, 0.5);
+      color: var(--accent);
+    }
+
+    .player-section.is-fullscreen {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      border-radius: 0;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      max-width: none;
+      margin: 0;
+    }
+
+    .player-section.is-fullscreen .player-frame-wrap {
+      flex: 1;
+      aspect-ratio: unset;
+      min-height: 0;
+    }
+
+    .player-section.is-fullscreen .player-header {
+      flex-shrink: 0;
+    }
+
+    .player-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--muted);
+      text-align: center;
+      padding: 24px;
+    }
+
+    .player-placeholder-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      font-size: 1.5rem;
+    }
+
+    /* Search results */
+    .results-panel {
+      margin-top: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: none;
+    }
+
+    .results-panel.visible {
+      display: block;
+    }
+
+    .results-header {
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .imdb-find-link {
+      color: #f5c518;
+      text-decoration: none;
+      font-size: 0.72rem;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .imdb-find-link:hover {
+      text-decoration: underline;
+    }
+
+    .result-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+
+    .result-item:last-child {
+      border-bottom: none;
+    }
+
+    .result-item:hover {
+      background: var(--surface-2);
+    }
+
+    .result-poster {
+      width: 44px;
+      height: 66px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: var(--surface-2);
+      flex-shrink: 0;
+    }
+
+    .result-poster.empty {
+      display: grid;
+      place-items: center;
+      font-size: 1.2rem;
+      color: var(--muted);
+    }
+
+    .result-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .result-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 2px;
+    }
+
+    .result-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .result-play {
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .result-item:hover .result-play {
+      opacity: 1;
+    }
+
+    /* History */
+    .history-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 4px);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 24px;
+    }
+
+    .history-header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .history-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .history-count {
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: var(--surface-2);
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+
+    .history-list {
+      max-height: 520px;
+      overflow-y: auto;
+    }
+
+    .history-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .history-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+
+    .history-item:hover {
+      background: var(--surface-2);
+    }
+
+    .history-item.active {
+      background: rgba(229, 9, 20, 0.08);
+      border-left: 3px solid var(--accent);
+      padding-left: 13px;
+    }
+
+    .history-poster {
+      width: 40px;
+      height: 58px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: var(--surface-2);
+      flex-shrink: 0;
+    }
+
+    .history-poster.empty {
+      display: grid;
+      place-items: center;
+      font-size: 1rem;
+      color: var(--muted);
+    }
+
+    .history-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .history-movie-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-movie-id {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .history-empty {
+      padding: 32px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .history-empty-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+      opacity: 0.5;
+    }
+
+    /* Status messages */
+    .status {
+      margin-top: 12px;
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    .status.visible {
+      display: block;
+    }
+
+    .status.error {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .status.loading {
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Tablet */
+    @media (max-width: 960px) {
+      .history-section {
+        position: static;
+      }
+
+      .history-list {
+        max-height: 360px;
+      }
+    }
+
+    /* Mobile */
+    @media (max-width: 640px) {
+      .app {
+        padding: max(16px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+
+      .logo {
+        font-size: 1.2rem;
+        justify-content: center;
+      }
+
+      .search-wrap {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .search-form {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .search-input {
+        width: 100%;
+        padding: 12px 14px;
+        font-size: 16px;
+      }
+
+      .btn-primary {
+        width: 100%;
+        padding: 13px 18px;
+        min-height: 48px;
+      }
+
+      .main-grid {
+        gap: 16px;
+      }
+
+      .player-header {
+        padding: 12px 14px;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .now-playing-title {
+        font-size: 0.92rem;
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .player-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .imdb-badge {
+        font-size: 0.7rem;
+        padding: 5px 10px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 55%;
+      }
+
+      .btn-fullscreen {
+        min-height: 40px;
+        padding: 8px 14px;
+      }
+
+      .player-frame-wrap {
+        aspect-ratio: 16 / 10;
+      }
+
+      .player-placeholder {
+        padding: 16px;
+      }
+
+      .player-placeholder-icon {
+        width: 52px;
+        height: 52px;
+        font-size: 1.25rem;
+      }
+
+      .player-placeholder p {
+        font-size: 0.85rem;
+      }
+
+      .player-guard {
+        padding: 14px;
+      }
+
+      .player-guard .btn-primary {
+        width: auto;
+        min-width: 200px;
+        font-size: 0.85rem;
+        padding: 12px 16px;
+      }
+
+      .player-guard-hint {
+        font-size: 0.72rem;
+        max-width: 220px;
+      }
+
+      .player-section.is-fullscreen {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      .player-section.is-fullscreen .player-header {
+        padding: 10px 12px;
+      }
+
+      .results-header {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 12px;
+      }
+
+      .result-item {
+        padding: 10px 12px;
+        gap: 10px;
+      }
+
+      .result-poster {
+        width: 40px;
+        height: 60px;
+      }
+
+      .result-title {
+        font-size: 0.88rem;
+      }
+
+      .result-meta {
+        font-size: 0.75rem;
+      }
+
+      .result-play {
+        opacity: 1;
+        min-height: 40px;
+        padding: 8px 12px;
+      }
+
+      .history-header {
+        padding: 12px 14px;
+      }
+
+      .history-list {
+        max-height: none;
+      }
+
+      .history-item {
+        padding: 10px 12px;
+        gap: 10px;
+      }
+
+      .history-item.active {
+        padding-left: 9px;
+      }
+
+      .history-poster {
+        width: 36px;
+        height: 52px;
+      }
+
+      .history-movie-title {
+        font-size: 0.82rem;
+      }
+
+      .btn-play {
+        min-height: 40px;
+        padding: 8px 12px;
+      }
+
+      .btn-icon {
+        min-width: 40px;
+        min-height: 40px;
+        display: grid;
+        place-items: center;
+      }
+
+      .status {
+        font-size: 0.8rem;
+        padding: 10px 12px;
+      }
+    }
+
+    /* Small phones */
+    @media (max-width: 380px) {
+      .logo span {
+        font-size: 1.05rem;
+      }
+
+      .logo-icon {
+        width: 32px;
+        height: 32px;
+      }
+
+      .player-actions {
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .imdb-badge {
+        max-width: 100%;
+        flex: 1;
+      }
+
+      .btn-fullscreen {
+        flex: 1;
+        justify-content: center;
+      }
+
+      .player-guard .btn-primary {
+        min-width: 0;
+        width: 100%;
+      }
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      .result-play {
+        opacity: 1;
+      }
+
+      .btn:active,
+      .result-item:active,
+      .history-item:active {
+        transform: scale(0.98);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon">▶</div>
+        <span>CineStream</span>
+      </div>
+
+      <div class="search-wrap">
+        <form class="search-form" id="searchForm">
+          <input
+            type="text"
+            class="search-input"
+            id="searchInput"
+            placeholder="Paste IMDb link… https://www.imdb.com/title/tt39139925/"
+            autocomplete="off"
+            required
+          >
+          <button type="submit" class="btn btn-primary" id="searchBtn">Play</button>
+        </form>
+        <div class="status" id="status"></div>
+      </div>
+    </header>
+
+    <div class="main-grid">
+      <section>
+        <div class="player-section">
+          <div class="player-header">
+            <div class="now-playing">
+              <div class="now-playing-label">Now Playing</div>
+              <div class="now-playing-title" id="nowPlayingTitle">Search for a movie to start</div>
+            </div>
+            <div class="player-actions">
+              <div class="imdb-badge" id="imdbBadge">—</div>
+              <button type="button" class="btn btn-fullscreen" id="fullscreenBtn" title="Toggle fullscreen" style="display:none;">⛶ Fullscreen</button>
+            </div>
+          </div>
+          <div class="player-frame-wrap" id="playerFrameWrap">
+            <div class="player-placeholder" id="placeholder">
+              <div class="player-placeholder-icon">🎬</div>
+              <p>Find a movie and hit Play to stream</p>
+            </div>
+            <iframe
+              id="player"
+              allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+              allowfullscreen
+              referrerpolicy="origin"
+              sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
+              style="display: none;"
+            ></iframe>
+            <div class="player-guard" id="playerGuard">
+              <button type="button" class="btn btn-primary" id="interactBtn">▶ Use Player Controls</button>
+              <p class="player-guard-hint">Click shield blocks ad popups. Enable controls for 15 seconds when needed.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="results-panel" id="resultsPanel">
+          <div class="results-header">
+            <span>IMDb Find Results</span>
+            <a class="imdb-find-link" id="imdbFindLink" href="#" target="_blank" rel="noopener noreferrer">Open on IMDb ↗</a>
+          </div>
+          <div id="resultsList"></div>
+        </div>
+      </section>
+
+      <aside class="history-section">
+        <div class="history-header">
+          <span class="history-title">Watch History</span>
+          <span class="history-count" id="historyCount">0</span>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="history-empty">
+            <div class="history-empty-icon">🕐</div>
+            <p>Paste an IMDb link — watched movies appear here</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "cinestream_history";
+    const STREAMIMDB_EMBED = "https://streamimdb.ru/embed/movie/";
+    const IMDB_FIND_BASE = "https://www.imdb.com/find/?q=";
+    const IMDB_GRAPHQL = "https://graphql.imdb.com/";
+
+    const searchForm = document.getElementById("searchForm");
+    const searchInput = document.getElementById("searchInput");
+    const searchBtn = document.getElementById("searchBtn");
+    const statusEl = document.getElementById("status");
+    const resultsPanel = document.getElementById("resultsPanel");
+    const resultsList = document.getElementById("resultsList");
+    const player = document.getElementById("player");
+    const placeholder = document.getElementById("placeholder");
+    const nowPlayingTitle = document.getElementById("nowPlayingTitle");
+    const imdbBadge = document.getElementById("imdbBadge");
+    const historyList = document.getElementById("historyList");
+    const historyCount = document.getElementById("historyCount");
+    const imdbFindLink = document.getElementById("imdbFindLink");
+    const playerSection = document.querySelector(".player-section");
+    const playerFrameWrap = document.getElementById("playerFrameWrap");
+    const playerGuard = document.getElementById("playerGuard");
+    const interactBtn = document.getElementById("interactBtn");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+
+    let activeId = null;
+    let isFullscreen = false;
+    let interactionTimer = null;
+    const nativeWindowOpen = window.open.bind(window);
+
+    function extractImdbId(input) {
+      const trimmed = input.trim();
+      const urlMatch = trimmed.match(/imdb\.com\/title\/(tt\d{7,8})/i);
+      if (urlMatch) return urlMatch[1];
+      const idMatch = trimmed.match(/^(tt\d{7,8})$/i);
+      if (idMatch) return idMatch[1].toLowerCase();
+      return null;
+    }
+
+    function setPopupBlock(on) {
+      window.open = on ? () => null : nativeWindowOpen;
+    }
+
+    function disableInteraction() {
+      clearTimeout(interactionTimer);
+      interactionTimer = null;
+      playerFrameWrap.classList.remove("interaction-on");
+      if (player.style.display !== "none") playerGuard.classList.add("visible");
+    }
+
+    function enableInteraction(seconds = 15) {
+      playerFrameWrap.classList.add("interaction-on");
+      playerGuard.classList.remove("visible");
+      clearTimeout(interactionTimer);
+      interactionTimer = setTimeout(disableInteraction, seconds * 1000);
+    }
+
+    async function fetchEmbedVideoUrl(imdbId) {
+      const embedPageUrl = `${STREAMIMDB_EMBED}${imdbId}`;
+      try {
+        const res = await fetch(embedPageUrl);
+        if (!res.ok) throw new Error("Embed request failed");
+        const html = await res.text();
+        const iframeMatch =
+          html.match(/<iframe[^>]+id=["']pf["'][^>]+src=["']([^"']+)["']/i) ||
+          html.match(/<iframe[^>]+src=["'](https?:\/\/[^"']+)["']/i);
+        if (iframeMatch?.[1]) return iframeMatch[1];
+      } catch {
+        /* CORS or network — use streamimdb embed directly */
+      }
+      return embedPageUrl;
+    }
+
+    function stopPlayer() {
+      disableInteraction();
+      setPopupBlock(false);
+      player.removeAttribute("src");
+    }
+
+    async function fetchMovieMeta(imdbId) {
+      const res = await fetch(IMDB_GRAPHQL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: `query TitleMeta($id: ID!) {
+            title(id: $id) {
+              id
+              titleText { text }
+              releaseYear { year }
+              primaryImage { url }
+            }
+          }`,
+          variables: { id: imdbId },
+        }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const title = data.data?.title;
+      if (!title) return null;
+      return {
+        id: title.id,
+        title: title.titleText?.text || imdbId,
+        year: title.releaseYear?.year || "",
+        poster: title.primaryImage?.url || "",
+      };
+    }
+
+    function setFullscreen(on) {
+      isFullscreen = on;
+      playerSection.classList.toggle("is-fullscreen", on);
+      document.body.style.overflow = on ? "hidden" : "";
+      fullscreenBtn.textContent = on ? "✕ Exit" : "⛶ Fullscreen";
+    }
+
+    function toggleFullscreen() {
+      setFullscreen(!isFullscreen);
+    }
+
+    function getHistory() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveHistory(history) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    }
+
+    function addToHistory(movie) {
+      const existing = getHistory().find((item) => item.id === movie.id);
+      const history = getHistory().filter((item) => item.id !== movie.id);
+      const title = movie.title && movie.title !== movie.id
+        ? movie.title
+        : (existing?.title && existing.title !== movie.id ? existing.title : movie.title || movie.id);
+
+      history.unshift({
+        id: movie.id,
+        title,
+        year: movie.year || existing?.year || "",
+        poster: movie.poster || existing?.poster || "",
+        searchedAt: Date.now(),
+      });
+      saveHistory(history.slice(0, 20));
+      renderHistory();
+    }
+
+    function showStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = `status visible ${type}`;
+      if (type === "loading") {
+        statusEl.innerHTML = `<span class="spinner"></span>${message}`;
+      }
+    }
+
+    function hideStatus() {
+      statusEl.className = "status";
+      statusEl.textContent = "";
+    }
+
+    function imdbFindUrl(query) {
+      return `${IMDB_FIND_BASE}${encodeURIComponent(query.trim())}&ref_=tt_nv_srb_sm`;
+    }
+
+    async function searchImdb(query) {
+      if (window.location.protocol === "file:") {
+        throw new Error("Serve this page on http://localhost (e.g. npx serve .) — file:// blocks IMDb requests.");
+      }
+
+      const res = await fetch(IMDB_GRAPHQL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: `query FindMovies($term: String!) {
+            mainSearch(
+              first: 12
+              options: {
+                searchTerm: $term
+                isExactMatch: false
+                type: TITLE
+                titleSearchOptions: { type: MOVIE }
+              }
+            ) {
+              edges {
+                node {
+                  entity {
+                    ... on Title {
+                      id
+                      titleText { text }
+                      releaseYear { year }
+                      primaryImage { url }
+                    }
+                  }
+                }
+              }
+            }
+          }`,
+          variables: { term: query.trim() },
+        }),
+      });
+
+      if (!res.ok) throw new Error("IMDb search failed");
+
+      const data = await res.json();
+      if (data.errors?.length) throw new Error(data.errors[0].message);
+
+      return (data.data?.mainSearch?.edges || [])
+        .map(({ node }) => node.entity)
+        .filter((entity) => entity?.id)
+        .map((entity) => ({
+          id: entity.id,
+          l: entity.titleText?.text || "Unknown",
+          y: entity.releaseYear?.year || "",
+          i: entity.primaryImage?.url ? { imageUrl: entity.primaryImage.url } : null,
+        }));
+    }
+
+    function renderResults(results) {
+      if (!results.length) {
+        resultsPanel.classList.remove("visible");
+        resultsList.innerHTML = "";
+        return;
+      }
+
+      resultsList.innerHTML = results.map((item, index) => {
+        const poster = item.i?.imageUrl || "";
+        const year = item.y || "—";
+        const cast = item.s || "";
+        return `
+          <div class="result-item" data-index="${index}">
+            ${poster
+              ? `<img class="result-poster" src="${poster}" alt="">`
+              : `<div class="result-poster empty">🎞</div>`}
+            <div class="result-info">
+              <div class="result-title">${escapeHtml(item.l)}</div>
+              <div class="result-meta">${year}${cast ? ` · ${escapeHtml(cast)}` : ""} · ${item.id}</div>
+            </div>
+            <button class="btn btn-play result-play" type="button">▶ Play</button>
+          </div>
+        `;
+      }).join("");
+
+      resultsPanel.classList.add("visible");
+      resultsList._items = results.map((item) => ({
+        id: item.id,
+        title: item.l,
+        year: item.y || "",
+        poster: item.i?.imageUrl || "",
+      }));
+
+      resultsList.querySelectorAll(".result-item").forEach((el) => {
+        el.addEventListener("click", () => {
+          const movie = resultsList._items[Number(el.dataset.index)];
+          if (movie) playFromImdbLink(movie.id);
+        });
+      });
+    }
+
+    function playMovie(movie, options = {}) {
+      activeId = movie.id;
+      const embedUrl = options.embedUrl || `${STREAMIMDB_EMBED}${movie.id}`;
+
+      stopPlayer();
+      placeholder.style.display = "none";
+      player.style.display = "block";
+      player.src = embedUrl;
+      playerGuard.classList.add("visible");
+      setPopupBlock(true);
+      fullscreenBtn.style.display = "inline-flex";
+
+      nowPlayingTitle.textContent = movie.year
+        ? `${movie.title} (${movie.year})`
+        : movie.title;
+      imdbBadge.textContent = movie.id;
+
+      addToHistory(movie);
+      hideStatus();
+      resultsPanel.classList.remove("visible");
+      searchInput.value = `https://www.imdb.com/title/${movie.id}/`;
+
+      if (options.fullscreen) setFullscreen(true);
+      renderHistory();
+    }
+
+    async function playFromImdbLink(imdbId) {
+      searchBtn.disabled = true;
+      showStatus("Fetching stream…", "loading");
+
+      try {
+        const [embedUrl, meta] = await Promise.all([
+          fetchEmbedVideoUrl(imdbId),
+          fetchMovieMeta(imdbId).catch(() => null),
+        ]);
+
+        const movie = meta || { id: imdbId, title: imdbId, year: "", poster: "" };
+        playMovie(movie, { embedUrl, fullscreen: true });
+      } catch (err) {
+        showStatus(err.message || "Could not load stream. Check the IMDb link and try again.", "error");
+      } finally {
+        searchBtn.disabled = false;
+      }
+    }
+
+    function renderHistory() {
+      const history = getHistory();
+      historyCount.textContent = history.length;
+
+      if (!history.length) {
+        historyList.innerHTML = `
+          <div class="history-empty">
+            <div class="history-empty-icon">🕐</div>
+            <p>Paste an IMDb link — watched movies appear here</p>
+          </div>
+        `;
+        return;
+      }
+
+      historyList.innerHTML = history.map((item) => `
+        <div class="history-item ${item.id === activeId ? "active" : ""}" data-id="${item.id}">
+          ${item.poster
+            ? `<img class="history-poster" src="${item.poster}" alt="">`
+            : `<div class="history-poster empty">🎞</div>`}
+          <div class="history-info">
+            <div class="history-movie-title">${escapeHtml(item.title)}</div>
+            <div class="history-movie-id">${item.id}${item.year ? ` · ${item.year}` : ""}</div>
+          </div>
+          <button class="btn btn-play" type="button" data-play="${item.id}">▶ Play</button>
+          <button class="btn-icon" type="button" data-remove="${item.id}" title="Remove">✕</button>
+        </div>
+      `).join("");
+
+      historyList.querySelectorAll("[data-play]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const item = history.find((h) => h.id === btn.dataset.play);
+          if (item) playFromImdbLink(item.id);
+        });
+      });
+
+      historyList.querySelectorAll("[data-remove]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const updated = getHistory().filter((h) => h.id !== btn.dataset.remove);
+          saveHistory(updated);
+          renderHistory();
+        });
+      });
+
+      historyList.querySelectorAll(".history-item").forEach((el) => {
+        el.addEventListener("click", () => {
+          const item = history.find((h) => h.id === el.dataset.id);
+          if (item) playFromImdbLink(item.id);
+        });
+      });
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    searchForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const query = searchInput.value.trim();
+      if (!query) return;
+
+      const imdbId = extractImdbId(query);
+      if (imdbId) {
+        await playFromImdbLink(imdbId);
+        return;
+      }
+
+      searchBtn.disabled = true;
+      showStatus("Searching IMDb find…", "loading");
+      imdbFindLink.href = imdbFindUrl(query);
+
+      try {
+        const results = await searchImdb(query);
+        if (!results.length) {
+          showStatus(`No movies found on IMDb for "${query}"`, "error");
+          resultsPanel.classList.remove("visible");
+          return;
+        }
+
+        hideStatus();
+        renderResults(results);
+
+        if (results.length === 1) {
+          const item = results[0];
+          playFromImdbLink(item.id);
+        }
+      } catch (err) {
+        showStatus(err.message || "Could not reach IMDb. Check your connection and try again.", "error");
+      } finally {
+        searchBtn.disabled = false;
+      }
+    });
+
+    fullscreenBtn.addEventListener("click", toggleFullscreen);
+    interactBtn.addEventListener("click", () => enableInteraction(15));
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && isFullscreen) setFullscreen(false);
+    });
+
+    window.addEventListener("message", (e) => {
+      if (!e.data || typeof e.data !== "object" || e.data.type !== "PLAYER_TITLE" || !e.data.title) return;
+      nowPlayingTitle.textContent = e.data.title;
+      if (!activeId) return;
+      const history = getHistory();
+      const item = history.find((h) => h.id === activeId);
+      if (item && item.title !== e.data.title) {
+        item.title = e.data.title;
+        saveHistory(history);
+        renderHistory();
+      }
+    });
+
+    function updateMobilePlaceholder() {
+      searchInput.placeholder = window.innerWidth < 480
+        ? "Paste IMDb link or tt ID…"
+        : "Paste IMDb link… https://www.imdb.com/title/tt39139925/";
+    }
+
+    window.addEventListener("resize", updateMobilePlaceholder);
+    updateMobilePlaceholder();
+    renderHistory();
+  </script>
+</body>
+</html>
