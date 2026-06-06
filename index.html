@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>CineStream — Movie Player</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #0a0a0f;
@@ -30,7 +27,7 @@
     }
 
     body {
-      font-family: "Inter", system-ui, sans-serif;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -269,39 +266,19 @@
       height: 100%;
       border: 0;
       background: #000;
-      pointer-events: none;
     }
 
-    .player-frame-wrap.interaction-on iframe {
-      pointer-events: auto;
-    }
-
-    .player-guard {
-      position: absolute;
-      inset: 0;
-      z-index: 3;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      background: rgba(0, 0, 0, 0.35);
-      text-align: center;
-      padding: 20px;
-    }
-
-    .player-guard.visible {
-      display: flex;
-    }
-
-    .player-frame-wrap.interaction-on .player-guard {
-      display: none;
-    }
-
-    .player-guard-hint {
-      font-size: 0.78rem;
+    .player-hint {
+      padding: 10px 16px 12px;
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
       color: var(--muted);
-      max-width: 260px;
+      text-align: center;
+      display: none;
+    }
+
+    .player-hint.visible {
+      display: block;
     }
 
     .btn-fullscreen {
@@ -726,22 +703,6 @@
         font-size: 0.85rem;
       }
 
-      .player-guard {
-        padding: 14px;
-      }
-
-      .player-guard .btn-primary {
-        width: auto;
-        min-width: 200px;
-        font-size: 0.85rem;
-        padding: 12px 16px;
-      }
-
-      .player-guard-hint {
-        font-size: 0.72rem;
-        max-width: 220px;
-      }
-
       .player-section.is-fullscreen {
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
@@ -851,10 +812,6 @@
         justify-content: center;
       }
 
-      .player-guard .btn-primary {
-        min-width: 0;
-        width: 100%;
-      }
     }
 
     @media (hover: none) and (pointer: coarse) {
@@ -920,11 +877,8 @@
               sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
               style="display: none;"
             ></iframe>
-            <div class="player-guard" id="playerGuard">
-              <button type="button" class="btn btn-primary" id="interactBtn">▶ Use Player Controls</button>
-              <p class="player-guard-hint">Click shield blocks ad popups. Enable controls for 15 seconds when needed.</p>
-            </div>
           </div>
+          <p class="player-hint" id="playerHint">Use the play, pause, and seek controls inside the video player.</p>
         </div>
 
         <div class="results-panel" id="resultsPanel">
@@ -971,14 +925,11 @@
     const historyCount = document.getElementById("historyCount");
     const imdbFindLink = document.getElementById("imdbFindLink");
     const playerSection = document.querySelector(".player-section");
-    const playerFrameWrap = document.getElementById("playerFrameWrap");
-    const playerGuard = document.getElementById("playerGuard");
-    const interactBtn = document.getElementById("interactBtn");
+    const playerHint = document.getElementById("playerHint");
     const fullscreenBtn = document.getElementById("fullscreenBtn");
 
     let activeId = null;
     let isFullscreen = false;
-    let interactionTimer = null;
     const nativeWindowOpen = window.open.bind(window);
 
     function extractImdbId(input) {
@@ -994,20 +945,6 @@
       window.open = on ? () => null : nativeWindowOpen;
     }
 
-    function disableInteraction() {
-      clearTimeout(interactionTimer);
-      interactionTimer = null;
-      playerFrameWrap.classList.remove("interaction-on");
-      if (player.style.display !== "none") playerGuard.classList.add("visible");
-    }
-
-    function enableInteraction(seconds = 15) {
-      playerFrameWrap.classList.add("interaction-on");
-      playerGuard.classList.remove("visible");
-      clearTimeout(interactionTimer);
-      interactionTimer = setTimeout(disableInteraction, seconds * 1000);
-    }
-
     async function fetchEmbedVideoUrl(imdbId) {
       const embedPageUrl = `${STREAMIMDB_EMBED}${imdbId}`;
       try {
@@ -1019,15 +956,15 @@
           html.match(/<iframe[^>]+src=["'](https?:\/\/[^"']+)["']/i);
         if (iframeMatch?.[1]) return iframeMatch[1];
       } catch {
-        /* CORS or network — use streamimdb embed directly */
+        /* fallback to streamimdb embed URL */
       }
       return embedPageUrl;
     }
 
     function stopPlayer() {
-      disableInteraction();
       setPopupBlock(false);
       player.removeAttribute("src");
+      playerHint.classList.remove("visible");
     }
 
     async function fetchMovieMeta(imdbId) {
@@ -1218,7 +1155,7 @@
       placeholder.style.display = "none";
       player.style.display = "block";
       player.src = embedUrl;
-      playerGuard.classList.add("visible");
+      playerHint.classList.add("visible");
       setPopupBlock(true);
       fullscreenBtn.style.display = "inline-flex";
 
@@ -1352,7 +1289,6 @@
     });
 
     fullscreenBtn.addEventListener("click", toggleFullscreen);
-    interactBtn.addEventListener("click", () => enableInteraction(15));
 
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && isFullscreen) setFullscreen(false);
